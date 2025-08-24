@@ -3,8 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <title>Country Leaderboard</title>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 <style>
   body {
     font-family: Arial, sans-serif;
@@ -17,9 +15,24 @@
     margin: 0;
     color: white;
   }
-  button { padding:12px 24px; font-size:16px; border:none; border-radius:8px; background:#4a90e2; cursor:pointer; margin-top:10px; }
-  table { margin-top:20px; border-collapse: collapse; }
-  td, th { padding:8px 16px; border: 1px solid #fff; }
+  button { 
+    padding: 12px 24px; 
+    font-size: 16px; 
+    border: none; 
+    border-radius: 8px; 
+    background: #4a90e2; 
+    cursor: pointer; 
+    margin-top: 10px; 
+  }
+  table { 
+    margin-top: 20px; 
+    border-collapse: collapse; 
+    background: rgba(0,0,0,0.3);
+  }
+  td, th { 
+    padding: 8px 16px; 
+    border: 1px solid #fff; 
+  }
 </style>
 </head>
 <body>
@@ -36,52 +49,60 @@
 </table>
 
 <script>
-  // ----- Firebase config -----
-  const firebaseConfig = {
-    apiKey: "AIzaSyC_FeZlvtmTKvToG1lHn3moLSRdTmE-uzI",
-    authDomain: "countryleaderboard.firebaseapp.com",
-    databaseURL: "https://countryleaderboard-default-rtdb.firebaseio.com",
-    projectId: "countryleaderboard",
-    storageBucket: "countryleaderboard.appspot.com",
-    messagingSenderId: "288815672414",
-    appId: "1:288815672414:web:f6091a52d238c7080318cf"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+let userCountry = "";
+const leaderboardBody = document.querySelector("#leaderboard tbody");
+const addBtn = document.getElementById("addPoint");
 
-  let userCountry = "";
+// Detect country using ipwho.is
+fetch("https://ipwho.is/")
+  .then(res => res.json())
+  .then(data => {
+    if(data.success){
+      userCountry = data.country;
+      document.getElementById("country").textContent = "Your country: " + userCountry;
+    } else {
+      document.getElementById("country").textContent = "Could not detect country";
+      addBtn.disabled = true;
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    document.getElementById("country").textContent = "Could not detect country";
+    addBtn.disabled = true;
+  });
 
-  // Detect country
-  fetch("https://ipwho.is/")
+// Add 1 point
+addBtn.addEventListener("click", () => {
+  if(!userCountry) return;
+  
+  fetch("https://your-backend-url.com/add-point", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ country: userCountry })
+  })
+  .then(res => res.json())
+  .then(data => console.log("Point added!", data))
+  .catch(err => console.error("Error adding point:", err));
+});
+
+// Update leaderboard
+function updateLeaderboard() {
+  fetch("https://your-backend-url.com/leaderboard")
     .then(res => res.json())
-    .then(data => {
-      if(data.success) {
-        userCountry = data.country;
-        document.getElementById("country").textContent = "Your country: " + userCountry;
-      } else {
-        document.getElementById("country").textContent = "Could not detect country";
-      }
-    });
+    .then(sorted => {
+      leaderboardBody.innerHTML = "";
+      sorted.forEach(([country, points]) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${country}</td><td>${points}</td>`;
+        leaderboardBody.appendChild(row);
+      });
+    })
+    .catch(err => console.error("Error fetching leaderboard:", err));
+}
 
-  // Add 1 point
-  document.getElementById("addPoint").addEventListener("click", () => {
-    if(!userCountry) return;
-    const ref = db.ref("countries/" + userCountry);
-    ref.transaction(current => (current || 0) + 1);
-  });
-
-  // Update leaderboard
-  const leaderboardBody = document.querySelector("#leaderboard tbody");
-  db.ref("countries").on("value", snapshot => {
-    leaderboardBody.innerHTML = "";
-    const data = snapshot.val() || {};
-    const sorted = Object.entries(data).sort((a,b)=>b[1]-a[1]);
-    sorted.forEach(([country, points]) => {
-      const row = document.createElement("tr");
-      row.innerHTML = `<td>${country}</td><td>${points}</td>`;
-      leaderboardBody.appendChild(row);
-    });
-  });
+// Refresh leaderboard every 5 seconds
+setInterval(updateLeaderboard, 5000);
+updateLeaderboard();
 </script>
 
 </body>
