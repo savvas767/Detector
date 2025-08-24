@@ -53,7 +53,10 @@ let userCountry = "";
 const leaderboardBody = document.querySelector("#leaderboard tbody");
 const addBtn = document.getElementById("addPoint");
 
-// Detect country using ipwho.is
+// Replace with your deployed backend URL
+const BACKEND_URL = "https://savvas767.github.io/Detector/";
+
+// Detect country
 fetch("https://ipwho.is/")
   .then(res => res.json())
   .then(data => {
@@ -74,8 +77,8 @@ fetch("https://ipwho.is/")
 // Add 1 point
 addBtn.addEventListener("click", () => {
   if(!userCountry) return;
-  
-  fetch("https://your-backend-url.com/add-point", {
+
+  fetch(BACKEND_URL + "/add-point", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ country: userCountry })
@@ -87,7 +90,7 @@ addBtn.addEventListener("click", () => {
 
 // Update leaderboard
 function updateLeaderboard() {
-  fetch("https://your-backend-url.com/leaderboard")
+  fetch(BACKEND_URL + "/leaderboard")
     .then(res => res.json())
     .then(sorted => {
       leaderboardBody.innerHTML = "";
