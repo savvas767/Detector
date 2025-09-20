@@ -4,41 +4,93 @@
 <meta charset="UTF-8">
 <title>Country Leaderboard</title>
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    background: linear-gradient(135deg, #74ebd5, #9face6);
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin: 0;
-    color: white;
-  }
-  button { 
-    padding:12px 24px; 
-    font-size:16px; 
-    border:none; 
-    border-radius:8px; 
-    background:#4a90e2; 
-    cursor:pointer; 
-    margin-top:10px; 
-  }
-  table { 
-    margin-top:20px; 
-    border-collapse: collapse; 
-  }
-  td, th { 
-    padding:8px 16px; 
-    border: 1px solid #fff; 
-  }
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #74ebd5, #9face6);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+    }
+
+    #addPoint {
+      background: #4CAF50;
+      color: white;
+    }
+
+    #shopBtn {
+      background: #2196F3;
+      color: white;
+    }
+
+    #leaderboard {
+      margin: 20px auto;
+      padding: 10px;
+      width: 300px;
+      border: 2px solid #333;
+      border-radius: 10px;
+      background: white;
+      text-align: left;
+    }
+
+    #leaderboard h2 {
+      text-align: center;
+      margin-top: 0;
+    }
+
+    #leaderboard ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    #leaderboard li {
+      padding: 6px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    #shop {
+      display: none;
+      margin: 20px auto;
+      padding: 15px;
+      width: 300px;
+      border: 2px solid #555;
+      border-radius: 10px;
+      background: #fafafa;
+    }
+
+    #shop h2 {
+      margin-top: 0;
+    }
 </style>
 </head>
 <body>
 
-<h1>Country Leaderboard</h1>
+<h1>🌍Country Leaderboard🌍</h1>
 <p id="country">Detecting your country...</p>
+<p>Upgrade Points: <span id="upgradePointsDisplay">0</span></p>
 <button id="addPoint">+1 Point</button>
+<button id="shopBtn">Shop 🛒</button>
 
 <table id="leaderboard">
   <thead>
@@ -46,6 +98,13 @@
   </thead>
   <tbody></tbody>
 </table>
+
+<div id="shop">
+  <h2>Shop</h2>
+  <p>Upgrade Points: <span id="upgradePointsDisplay2">0</span></p>
+  <button id="multiplierBtn" onclick="buyUpgrade('multiplier')">+1 Multiplier (Cost: 50)</button>
+  <button id="autoClickerBtn" onclick="buyUpgrade('autoclick')">Auto-Clicker (Cost: 200)</button>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
@@ -65,7 +124,7 @@ const db = firebase.database();
 
 let userCountry = "";
 
-// Detect country
+// ===== COUNTRY DETECT =====
 fetch("https://ipwho.is/")
   .then(res => res.json())
   .then(data => {
@@ -78,14 +137,76 @@ fetch("https://ipwho.is/")
   })
   .catch(() => { document.getElementById("country").textContent = "Could not detect country"; });
 
-// +1 Point button
+// ===== LOCAL UPGRADE SYSTEM =====
+let upgradePoints = parseInt(localStorage.getItem("upgradePoints")) || 0;
+let clickMultiplier = parseInt(localStorage.getItem("clickMultiplier")) || 1;
+let autoClickers = parseInt(localStorage.getItem("autoClickers")) || 0;
+
+let multiplierCost = parseInt(localStorage.getItem("multiplierCost")) || 50;
+let autoClickerCost = parseInt(localStorage.getItem("autoClickerCost")) || 200;
+
+function saveUpgrades() {
+  localStorage.setItem("upgradePoints", upgradePoints);
+  localStorage.setItem("clickMultiplier", clickMultiplier);
+  localStorage.setItem("autoClickers", autoClickers);
+  localStorage.setItem("multiplierCost", multiplierCost);
+  localStorage.setItem("autoClickerCost", autoClickerCost);
+}
+
+function updateUpgradeDisplay() {
+  document.getElementById("upgradePointsDisplay").textContent = upgradePoints;
+  document.getElementById("upgradePointsDisplay2").textContent = upgradePoints;
+  document.getElementById("multiplierBtn").textContent = `+1 Multiplier (Cost: ${multiplierCost})`;
+  document.getElementById("autoClickerBtn").textContent = `Auto-Clicker (Cost: ${autoClickerCost})`;
+}
+updateUpgradeDisplay();
+
+function buyUpgrade(type) {
+  if (type === "multiplier" && upgradePoints >= multiplierCost) {
+    upgradePoints -= multiplierCost;
+    clickMultiplier++;
+    multiplierCost = Math.floor(multiplierCost * 1.5);
+    alert(`Multiplier upgraded! Now x${clickMultiplier}`);
+  } else if (type === "autoclick" && upgradePoints >= autoClickerCost) {
+    upgradePoints -= autoClickerCost;
+    autoClickers++;
+    autoClickerCost = Math.floor(autoClickerCost * 1.5);
+    alert(`Bought Auto-Clicker! (${autoClickers} total)`);
+  } else {
+    alert("Not enough points!");
+  }
+  saveUpgrades();
+  updateUpgradeDisplay();
+}
+
+// ===== AUTO-CLICKERS =====
+setInterval(() => {
+  if (autoClickers > 0 && userCountry) {
+    const ref = db.ref("countries/" + userCountry);
+    ref.transaction(current => (current || 0) + autoClickers * clickMultiplier);
+
+    if (Math.random() < 0.05 * autoClickers) {
+      upgradePoints += clickMultiplier;
+      saveUpgrades();
+      updateUpgradeDisplay();
+    }
+  }
+}, 1000);
+
+// ===== CLICK HANDLER =====
 document.getElementById("addPoint").addEventListener("click", () => {
   if(!userCountry) return;
   const ref = db.ref("countries/" + userCountry);
-  ref.transaction(current => (current || 0) + 1);
+  ref.transaction(current => (current || 0) + (1 * clickMultiplier));
+
+  if (Math.random() < 0.15) {
+    upgradePoints += clickMultiplier;
+    updateUpgradeDisplay();
+    saveUpgrades();
+  }
 });
 
-// Live leaderboard
+// ===== LEADERBOARD =====
 const leaderboardBody = document.querySelector("#leaderboard tbody");
 db.ref("countries").on("value", snapshot => {
   leaderboardBody.innerHTML = "";
@@ -96,6 +217,16 @@ db.ref("countries").on("value", snapshot => {
     row.innerHTML = `<td>${country}</td><td>${points}</td>`;
     leaderboardBody.appendChild(row);
   });
+});
+
+// ===== SHOP TOGGLE =====
+document.getElementById("shopBtn").addEventListener("click", () => {
+  const shop = document.getElementById("shop");
+  if (shop.style.display === "none" || shop.style.display === "") {
+    shop.style.display = "block";
+  } else {
+    shop.style.display = "none";
+  }
 });
 </script>
 
