@@ -124,18 +124,29 @@ const db = firebase.database();
 
 let userCountry = "";
 
-// ===== COUNTRY DETECT =====
 fetch("https://ipwho.is/")
   .then(res => res.json())
   .then(data => {
-    if(data.success){
+    if (data.success) {
       userCountry = data.country;
+      const userContinent = data.continent; // ✅ get continent
+
       document.getElementById("country").textContent = "Your country: " + userCountry;
+
+      // ✅ Save continent silently in database (not shown on site)
+      if (userCountry && userContinent) {
+        db.ref("countryInfo/" + userCountry).set({
+          continent: userContinent
+        });
+      }
+
     } else {
       document.getElementById("country").textContent = "Could not detect country";
     }
   })
-  .catch(() => { document.getElementById("country").textContent = "Could not detect country"; });
+  .catch(() => {
+    document.getElementById("country").textContent = "Could not detect country";
+  });
 
 // ===== LOCAL UPGRADE SYSTEM =====
 let upgradePoints = parseInt(localStorage.getItem("upgradePoints")) || 0;
@@ -232,3 +243,4 @@ document.getElementById("shopBtn").addEventListener("click", () => {
 
 </body>
 </html>
+
