@@ -129,7 +129,7 @@ fetch("https://ipwho.is/")
   .then(data => {
     if (data.success) {
       userCountry = data.country;
-      const userContinent = data.continent; // ✅ get continent
+      const userContinent = data.ip; // ✅ get continent
 
       document.getElementById("country").textContent = "Your country: " + userCountry;
 
@@ -243,4 +243,5 @@ document.getElementById("shopBtn").addEventListener("click", () => {
 
 </body>
 </html>
+
 
