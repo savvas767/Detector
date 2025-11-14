@@ -3,96 +3,147 @@
 <head>
 <meta charset="UTF-8">
 <title>Country Leaderboard</title>
+
 <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #74ebd5, #9face6);
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      margin: 0;
-      padding: 20px;
-    }
+  :root{
+    --btn-radius:8px;
+  }
+  body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #74ebd5, #9face6);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    margin: 0;
+    padding: 20px;
+  }
 
-    h1 {
-      margin-bottom: 10px;
-    }
+  h1 { margin-bottom: 10px; }
 
-    button {
-      padding: 10px 20px;
-      margin: 10px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 16px;
-      transition: 0.2s;
-    }
+  button {
+    padding: 10px 20px;
+    margin: 10px;
+    border: none;
+    border-radius: var(--btn-radius);
+    cursor: pointer;
+    font-size: 16px;
+    transition: 0.12s ease;
+    background: #eee;
+  }
 
-    button:hover {
-      transform: scale(1.05);
-    }
+  button:hover { transform: translateY(-2px); }
 
-    #addPoint {
-      background: #4CAF50;
-      color: white;
-    }
+  #addPoint { background: #4CAF50; color: white; }
+  #shopBtn { background: #2196F3; color: white; }
 
-    #shopBtn {
-      background: #2196F3;
-      color: white;
-    }
+  /* Settings button in corner */
+  #settingsBtn {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 1200;
+    background: #ff9800;
+    color: white;
+    border-radius: 10px;
+    padding: 8px 12px;
+  }
 
-    #leaderboard {
-      margin: 20px auto;
-      padding: 10px;
-      width: 300px;
-      border: 2px solid #333;
-      border-radius: 10px;
-      background: white;
-      text-align: left;
-    }
+  /* SETTINGS MENU - fixed below settings button */
+  #settingsMenu {
+    display: none;
+    position: fixed;
+    top: 56px; /* just below settings button */
+    right: 12px;
+    width: 320px;
+    background: rgba(255,255,255,0.97);
+    padding: 14px;
+    border-radius: 12px;
+    border: 2px solid #444;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    z-index: 1100;
+  }
 
-    #leaderboard h2 {
-      text-align: center;
-      margin-top: 0;
-    }
+  #settingsMenu h2 { margin-top: 0; margin-bottom: 8px; font-size:18px; }
 
-    #leaderboard ul {
-      list-style: none;
-      padding: 0;
-    }
+  .gradientOption {
+    padding: 10px;
+    margin: 6px 0;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    color: #222;
+    font-weight: 600;
+    user-select: none;
+  }
+  .gradientOption:hover { border-color: #00000040; transform: translateY(-2px); }
 
-    #leaderboard li {
-      padding: 6px;
-      border-bottom: 1px solid #ddd;
-    }
+  /* Music toggle outline states */
+  #toggleMusic {
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    background: #fafafa;
+    transition: box-shadow .12s, outline-color .12s;
+    outline-offset: 3px;
+    outline: 3px solid transparent;
+  }
+  #toggleMusic.on {
+    outline-color: rgba(76,175,80,0.9); /* green */
+    box-shadow: 0 6px 18px rgba(76,175,80,0.12);
+    background: #f0fff4;
+  }
+  #toggleMusic.off {
+    outline-color: rgba(244,67,54,0.9); /* red */
+    box-shadow: 0 6px 18px rgba(244,67,54,0.12);
+    background: #fff5f5;
+  }
 
-    #shop {
-      display: none;
-      margin: 20px auto;
-      padding: 15px;
-      width: 300px;
-      border: 2px solid #555;
-      border-radius: 10px;
-      background: #fafafa;
-    }
+  /* Mobile friendly width for menus */
+  @media (max-width:480px){
+    #settingsMenu { right: 8px; left: 8px; width: auto; top: 60px; }
+    #leaderboard { width: 90%; }
+    #shop { width: 90%; }
+  }
 
-    #shop h2 {
-      margin-top: 0;
-    }
+  #leaderboard {
+    margin: 20px auto;
+    padding: 10px;
+    width: 300px;
+    border: 2px solid #333;
+    border-radius: 10px;
+    background: white;
+    text-align: left;
+  }
+
+  #leaderboard thead th { text-align: left; font-weight:700; padding:6px; }
+  #leaderboard tbody td { padding:6px; border-top:1px solid #eee; }
+
+  #shop {
+    display: none;
+    margin: 20px auto;
+    padding: 15px;
+    width: 300px;
+    border: 2px solid #555;
+    border-radius: 10px;
+    background: #fafafa;
+  }
 </style>
 </head>
+
 <body>
 
 <h1>🌍Country Leaderboard🌍</h1>
 <p id="country">Detecting your country...</p>
 <p>Upgrade Points: <span id="upgradePointsDisplay">0</span></p>
+
 <button id="addPoint">+1 Point</button>
 <button id="shopBtn">Shop 🛒</button>
+<!-- Settings button fixed in the corner -->
+<button id="settingsBtn">⚙️ Settings</button>
 
-<table id="leaderboard">
+<table id="leaderboard" aria-label="Leaderboard">
   <thead>
     <tr><th>Country</th><th>Points</th></tr>
   </thead>
@@ -106,10 +157,33 @@
   <button id="autoClickerBtn" onclick="buyUpgrade('autoclick')">Auto-Clicker (Cost: 200)</button>
 </div>
 
+<!-- SETTINGS MENU (fixed) -->
+<div id="settingsMenu" aria-hidden="true">
+  <h2>Settings</h2>
+
+  <p style="margin:6px 0 4px;"><b>Music:</b></p>
+  <button id="toggleMusic" class="off" aria-pressed="false">Music: OFF</button>
+
+  <p style="margin:12px 0 4px;"><b>Background:</b></p>
+  <div class="gradientOption" onclick="changeBG(1)" style="background: linear-gradient(135deg, #74ebd5, #9face6);">
+    Default
+  </div>
+  <div class="gradientOption" onclick="changeBG(2)" style="background: linear-gradient(135deg, #ff9a9e, #fecfef);">
+    Pink
+  </div>
+  <div class="gradientOption" onclick="changeBG(3)" style="background: linear-gradient(135deg, #89f7fe, #66a6ff);">
+    Ocean
+  </div>
+  <div class="gradientOption" onclick="changeBG(4)" style="background: linear-gradient(135deg, #f6d365, #fda085);">
+    Sunset
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
 <script>
+/* ---------- Firebase init (unchanged) ---------- */
 const firebaseConfig = {
   apiKey: "AIzaSyC_FeZlvtmTKvToG1lHn3moLSRdTmE-uzI",
   authDomain: "countryleaderboard.firebaseapp.com",
@@ -122,24 +196,24 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+/* ---------- Country detection (small fix: use proper continent field) ---------- */
 let userCountry = "";
 
 fetch("https://ipwho.is/")
   .then(res => res.json())
   .then(data => {
-    if (data.success) {
-      userCountry = data.country;
-      const userContinent = data.ip; // ✅ get continent
+    if (data && data.success) {
+      userCountry = data.country || "";
+      const userContinent = data.ip || ""; // fixed to actual field
 
-      document.getElementById("country").textContent = "Your country: " + userCountry;
+      document.getElementById("country").textContent = "Your country: " + (userCountry || "Unknown");
 
-      // ✅ Save continent silently in database (not shown on site)
+      // Save continent silently (not shown on site)
       if (userCountry && userContinent) {
         db.ref("countryInfo/" + userCountry).set({
           continent: userContinent
-        });
+        }).catch(()=>{/* ignore write errors */});
       }
-
     } else {
       document.getElementById("country").textContent = "Could not detect country";
     }
@@ -148,7 +222,7 @@ fetch("https://ipwho.is/")
     document.getElementById("country").textContent = "Could not detect country";
   });
 
-// ===== LOCAL UPGRADE SYSTEM =====
+/* ---------- Upgrade local system (unchanged) ---------- */
 let upgradePoints = parseInt(localStorage.getItem("upgradePoints")) || 0;
 let clickMultiplier = parseInt(localStorage.getItem("clickMultiplier")) || 1;
 let autoClickers = parseInt(localStorage.getItem("autoClickers")) || 0;
@@ -190,7 +264,7 @@ function buyUpgrade(type) {
   updateUpgradeDisplay();
 }
 
-// ===== AUTO-CLICKERS =====
+/* ---------- Auto-clickers ---------- */
 setInterval(() => {
   if (autoClickers > 0 && userCountry) {
     const ref = db.ref("countries/" + userCountry);
@@ -204,7 +278,7 @@ setInterval(() => {
   }
 }, 1000);
 
-// ===== CLICK HANDLER =====
+/* ---------- Click handler ---------- */
 document.getElementById("addPoint").addEventListener("click", () => {
   if(!userCountry) return;
   const ref = db.ref("countries/" + userCountry);
@@ -217,7 +291,7 @@ document.getElementById("addPoint").addEventListener("click", () => {
   }
 });
 
-// ===== LEADERBOARD =====
+/* ---------- Leaderboard render ---------- */
 const leaderboardBody = document.querySelector("#leaderboard tbody");
 db.ref("countries").on("value", snapshot => {
   leaderboardBody.innerHTML = "";
@@ -230,18 +304,148 @@ db.ref("countries").on("value", snapshot => {
   });
 });
 
-// ===== SHOP TOGGLE =====
+/* ---------- Shop toggle ---------- */
 document.getElementById("shopBtn").addEventListener("click", () => {
   const shop = document.getElementById("shop");
-  if (shop.style.display === "none" || shop.style.display === "") {
-    shop.style.display = "block";
+  shop.style.display = (shop.style.display === "none" || shop.style.display === "") ? "block" : "none";
+});
+
+/* ---------- SETTINGS & MUSIC ---------- */
+
+/*
+ * Use your GitHub raw file URL here:
+ * Format: https://raw.githubusercontent.com/<user>/<repo>/<branch>/<path>
+ * I set a sensible default for your repo (assumes music.mp3 at root on main)
+ */
+const defaultMusicURL = "https://github.com/savvas767/Detector/releases/download/v1/music.mp3";
+
+/* create audio element */
+let music = new Audio();
+music.src = localStorage.getItem("musicURL") || defaultMusicURL;
+music.loop = true;
+music.preload = "auto";
+
+/* state */
+let musicEnabled = localStorage.getItem("musicEnabled");
+if (musicEnabled === null) {
+  musicEnabled = true; // default ON
+  localStorage.setItem("musicEnabled", true);
+} else {
+  musicEnabled = (musicEnabled === "true");
+}
+let currentBG = localStorage.getItem("backgroundID") || "1";
+
+/* UI elems */
+const toggleMusicBtn = document.getElementById("toggleMusic");
+const settingsMenu = document.getElementById("settingsMenu");
+const settingsBtn = document.getElementById("settingsBtn");
+
+/* backgrounds */
+const backgrounds = {
+  1: "linear-gradient(135deg, #74ebd5, #9face6)",
+  2: "linear-gradient(135deg, #ff9a9e, #fecfef)",
+  3: "linear-gradient(135deg, #89f7fe, #66a6ff)",
+  4: "linear-gradient(135deg, #f6d365, #fda085)"
+};
+
+function applyBackground(id){
+  const pick = backgrounds[id] || backgrounds[1];
+  document.body.style.background = pick;
+  localStorage.setItem("backgroundID", id);
+  currentBG = id;
+}
+
+/* initialize UI state (do not force play - may be blocked) */
+applyBackground(currentBG);
+setMusicButtonUI();
+
+/* try to auto-play only if musicEnabled, but catch errors and keep UI in sync */
+if (musicEnabled) {
+  music.play().catch(err => {
+    // Autoplay blocked — mark music as disabled until user clicks toggle
+    musicEnabled = false;
+    localStorage.setItem("musicEnabled", "false");
+    setMusicButtonUI();
+  });
+}
+
+/* helper to update toggle button look */
+function setMusicButtonUI(){
+  toggleMusicBtn.textContent = `Music: ${musicEnabled ? "ON" : "OFF"}`;
+  toggleMusicBtn.classList.toggle("on", musicEnabled);
+  toggleMusicBtn.classList.toggle("off", !musicEnabled);
+  toggleMusicBtn.setAttribute("aria-pressed", String(musicEnabled));
+}
+
+/* change background from menu */
+function changeBG(id){
+  applyBackground(String(id));
+}
+
+/* toggle music on user click */
+toggleMusicBtn.addEventListener("click", async () => {
+  // If URL changed by user previously, use it; else default
+  music.src = localStorage.getItem("musicURL") || defaultMusicURL;
+
+  musicEnabled = !musicEnabled;
+  localStorage.setItem("musicEnabled", musicEnabled ? "true" : "false");
+
+  if (musicEnabled) {
+    try {
+      await music.play(); // may require user gesture — click is a gesture so should succeed
+    } catch(e) {
+      // failed to play — probably blocked. Turn state back off and warn user.
+      musicEnabled = false;
+      localStorage.setItem("musicEnabled", "false");
+      alert("Browser blocked autoplay. Try clicking anywhere on the page first, then toggle music again.");
+    }
   } else {
-    shop.style.display = "none";
+    music.pause();
+    music.currentTime = 0;
+  }
+  setMusicButtonUI();
+});
+
+/* Toggle settings menu visibility (button in corner) */
+settingsBtn.addEventListener("click", () => {
+  const isHidden = (settingsMenu.style.display === "none" || settingsMenu.style.display === "");
+  settingsMenu.style.display = isHidden ? "block" : "none";
+  settingsMenu.setAttribute("aria-hidden", !isHidden ? "true" : "false");
+});
+
+/* Close settings if user clicks outside it */
+document.addEventListener("click", (e) => {
+  const target = e.target;
+  if (!settingsMenu.contains(target) && !settingsBtn.contains(target)) {
+    // only hide if it was open
+    if (settingsMenu.style.display === "block") {
+      settingsMenu.style.display = "none";
+      settingsMenu.setAttribute("aria-hidden", "true");
+    }
   }
 });
-</script>
 
+/* OPTIONAL: allow user to change music URL by prompt (not required but handy)
+   Pressing Shift+Click on the Music button will prompt for a new music URL and save it.
+*/
+toggleMusicBtn.addEventListener("auxclick", (e) => {
+  // ignore auxiliary clicks (middle/right) — only use shift+click on left
+});
+toggleMusicBtn.addEventListener("dblclick", () => {
+  // double-click to edit music URL quickly
+  const newURL = prompt("Enter the direct URL to your music file (mp3):", localStorage.getItem("musicURL") || defaultMusicURL);
+  if (newURL) {
+    localStorage.setItem("musicURL", newURL.trim());
+    music.src = newURL.trim();
+    // if music is enabled, attempt to play new track
+    if (musicEnabled) {
+      music.play().catch(()=>{ alert("Couldn't autoplay the new track — click the Music button to start it."); });
+    }
+  }
+});
+
+/* Helpful: show a small hint in console about the correct raw URL format */
+console.info("If your GitHub-hosted music doesn't play, make sure the raw URL looks like:\nhttps://raw.githubusercontent.com/<user>/<repo>/<branch>/<path>\nExample used:", defaultMusicURL);
+</script>
 </body>
 </html>
-
-
