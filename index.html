@@ -200,28 +200,35 @@ const db = firebase.database();
 let userCountry = "";
 
 fetch("https://ipwho.is/")
-  .then(res => res.json())
+  .then(async res => {
+    if (!res.ok) {
+      throw new Error("Network response failed");
+    }
+
+    return await res.json();
+  })
   .then(data => {
-    if (data && data.success) {
-      userCountry = data.country || "";
-      const userContinent = data.ip || ""; // fixed to actual field
+    console.log("IPWHO response:", data);
 
-      document.getElementById("country").textContent = "Your country: " + (userCountry || "Unknown");
+    userCountry = data.country || "Unknown";
+    const userContinent = data.continent || "Unknown";
 
-      // Save continent silently (not shown on site)
-      if (userCountry && userContinent) {
-        db.ref("countryInfo/" + userCountry).set({
-          continent: userContinent
-        }).catch(()=>{/* ignore write errors */});
-      }
-    } else {
-      document.getElementById("country").textContent = "Could not detect country";
+    document.getElementById("country").textContent =
+      "Your country: " + userCountry;
+
+    if (userCountry !== "Unknown") {
+      db.ref("countryInfo/" + userCountry).set({
+        continent: userContinent
+      });
     }
   })
-  .catch(() => {
-    document.getElementById("country").textContent = "Could not detect country";
-  });
+  .catch(err => {
+    console.error(err);
 
+    document.getElementById("country").textContent =
+      "Could not detect country";
+  });
+  
 /* ---------- Upgrade local system (unchanged) ---------- */
 let upgradePoints = parseInt(localStorage.getItem("upgradePoints")) || 0;
 let clickMultiplier = parseInt(localStorage.getItem("clickMultiplier")) || 1;
