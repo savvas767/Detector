@@ -2,231 +2,647 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Country Leaderboard</title>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
 <style>
+  /* ---------- Design tokens ---------- */
   :root{
-    --btn-radius:8px;
-  }
-  body {
-    font-family: Arial, sans-serif;
-    background: linear-gradient(135deg, #74ebd5, #9face6);
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    margin: 0;
-    padding: 20px;
+    --paper:#F6F2E7;
+    --paper-dim:#ECE3CB;
+    --ink:#1B1F22;
+    --ink-soft:#5B6168;
+    --line:#DED6BE;
+
+    --accent:#FFB400;
+    --accent-deep:#C9860A;
+    --accent-contrast:#1B1F22;
+    --glow: rgba(255,180,0,.35);
+
+    --rank-silver:#C7CCD1;
+    --rank-bronze:#D08A54;
+    --danger:#E1483D;
+
+    --radius-lg:20px;
+    --radius-md:14px;
+    --radius-sm:9px;
+
+    --shadow-1: 0 2px 10px rgba(27,31,34,.08);
+    --shadow-2: 0 14px 40px rgba(27,31,34,.22);
+
+    --font-display: 'Bebas Neue', Impact, 'Arial Narrow', sans-serif;
+    --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'Space Mono', 'SFMono-Regular', Menlo, monospace;
+
+    --cta-h: 84px; /* height reserved for the fixed bottom action bar */
   }
 
-  h1 { margin-bottom: 10px; }
+  body[data-theme="sky"]{ --accent:#2F6FED; --accent-deep:#1B4FBF; --accent-contrast:#FFFFFF; --glow: rgba(47,111,237,.35); }
+  body[data-theme="rose"]{ --accent:#E85D75; --accent-deep:#C23A54; --accent-contrast:#FFFFFF; --glow: rgba(232,93,117,.35); }
+  body[data-theme="mint"]{ --accent:#2FBF87; --accent-deep:#1C8F63; --accent-contrast:#FFFFFF; --glow: rgba(47,191,135,.35); }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+  }
+
+  body {
+    min-height: 100vh;
+    padding-bottom: calc(var(--cta-h) + env(safe-area-inset-bottom));
+  }
+
+  body.sheet-open { overflow: hidden; }
+
+  a { color: var(--accent-deep); }
 
   button {
-    padding: 10px 20px;
-    margin: 10px;
+    font-family: inherit;
     border: none;
-    border-radius: var(--btn-radius);
     cursor: pointer;
-    font-size: 16px;
-    transition: 0.12s ease;
-    background: #eee;
+    background: none;
+    color: inherit;
   }
 
-  button:hover { transform: translateY(-2px); }
-
-  #addPoint { background: #4CAF50; color: white; }
-  #shopBtn { background: #2196F3; color: white; }
-
-  /* Settings button in corner */
-  #settingsBtn {
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    z-index: 1200;
-    background: #ff9800;
-    color: white;
-    border-radius: 10px;
-    padding: 8px 12px;
+  button:focus-visible,
+  a:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 3px solid var(--accent-deep);
+    outline-offset: 2px;
   }
 
-  /* SETTINGS MENU - fixed below settings button */
-  #settingsMenu {
-    display: none;
-    position: fixed;
-    top: 56px; /* just below settings button */
-    right: 12px;
-    width: 320px;
-    background: rgba(255,255,255,0.97);
-    padding: 14px;
-    border-radius: 12px;
-    border: 2px solid #444;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-    z-index: 1100;
+  .app-shell {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 0 16px;
   }
 
-  #settingsMenu h2 { margin-top: 0; margin-bottom: 8px; font-size:18px; }
+  /* ---------- Top bar ---------- */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: rgba(246,242,231,0.92);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .live-indicator {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: .08em;
+    color: var(--ink-soft);
+  }
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--danger);
+    box-shadow: 0 0 0 rgba(225,72,61,.5);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .live-dot { animation: pulse 2s infinite; }
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(225,72,61,.45); }
+    70% { box-shadow: 0 0 0 8px rgba(225,72,61,0); }
+    100% { box-shadow: 0 0 0 0 rgba(225,72,61,0); }
+  }
+  .icon-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    background: var(--paper-dim);
+    transition: transform .12s ease, background .12s ease;
+  }
+  .icon-btn:hover { background: var(--line); }
+  .icon-btn:active { transform: scale(0.92); }
 
-  .gradientOption {
-    padding: 10px;
-    margin: 6px 0;
-    border-radius: 8px;
-    cursor: pointer;
-    border: 2px solid transparent;
-    color: #222;
+  /* ---------- Header ---------- */
+  h1.page-title {
+    font-family: var(--font-display);
+    font-size: 40px;
+    letter-spacing: .01em;
+    line-height: 1;
+    margin: 22px 0 4px;
+    text-transform: uppercase;
+  }
+  .page-sub {
+    font-size: 14px;
+    color: var(--ink-soft);
+    margin: 0 0 20px;
+  }
+
+  /* ---------- Status card ---------- */
+  .status-card {
+    background: var(--paper-dim);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .status-you {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .status-flag { font-size: 26px; line-height: 1; }
+  .status-text { min-width: 0; }
+  .status-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    display: block;
+  }
+  .status-country {
     font-weight: 600;
-    user-select: none;
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .gradientOption:hover { border-color: #00000040; transform: translateY(-2px); }
-
-  /* Music toggle outline states */
-  #toggleMusic {
-    padding: 8px 12px;
-    border-radius: 8px;
-    font-weight: 700;
-    background: #fafafa;
-    transition: box-shadow .12s, outline-color .12s;
-    outline-offset: 3px;
-    outline: 3px solid transparent;
+  .status-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
-  #toggleMusic.on {
-    outline-color: rgba(76,175,80,0.9); /* green */
-    box-shadow: 0 6px 18px rgba(76,175,80,0.12);
-    background: #f0fff4;
-  }
-  #toggleMusic.off {
-    outline-color: rgba(244,67,54,0.9); /* red */
-    box-shadow: 0 6px 18px rgba(244,67,54,0.12);
-    background: #fff5f5;
-  }
-
-  /* Mobile friendly width for menus */
-  @media (max-width:480px){
-    #settingsMenu { right: 8px; left: 8px; width: auto; top: 60px; }
-    #leaderboard { width: 90%; }
-    #shop { width: 90%; }
-  }
-
-  #leaderboard {
-    margin: 20px auto;
-    padding: 10px;
-    width: 300px;
-    border: 2px solid #333;
-    border-radius: 10px;
-    background: white;
-    text-align: left;
-  }
-
-  #leaderboard thead th { text-align: left; font-weight:700; padding:6px; }
-  #leaderboard tbody td { padding:6px; border-top:1px solid #eee; }
-
-  #shop {
-    display: none;
-    margin: 20px auto;
-    padding: 15px;
-    width: 300px;
-    border: 2px solid #555;
-    border-radius: 10px;
-    background: #fafafa;
-  }
-
-  button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none !important;
-  }
-
-  #statusNote {
+  .points-chip {
+    font-family: var(--font-mono);
     font-size: 13px;
-    color: #444;
-    min-height: 18px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 12px;
+    white-space: nowrap;
+  }
+  .points-chip b { color: var(--accent-deep); }
+  .shop-btn {
+    font-family: var(--font-display);
+    letter-spacing: .03em;
+    font-size: 15px;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 8px 16px;
+    border-radius: 999px;
+    transition: transform .12s ease;
+  }
+  .shop-btn:active { transform: scale(0.95); }
+
+  /* ---------- Board (signature element) ---------- */
+  .board-wrap {
+    background: var(--ink);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-2);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .board-row {
+    display: grid;
+    grid-template-columns: 38px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+  .board-row--head {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgba(246,242,231,0.45);
+    border-bottom: 1px solid rgba(246,242,231,0.12);
+    padding-top: 14px;
+    padding-bottom: 10px;
+  }
+  .board-row--head span:last-child { text-align: right; }
+  .board-body .board-row {
+    border-bottom: 1px solid rgba(246,242,231,0.08);
+    color: var(--paper);
+  }
+  .board-body .board-row:last-child { border-bottom: none; }
+  .board-body .board-row.you {
+    background: rgba(255,180,0,0.08);
+  }
+  .rank-cell {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: rgba(246,242,231,0.55);
+    text-align: center;
+  }
+  .rank-cell.medal { font-size: 18px; }
+  .country-cell {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-size: 14px;
+  }
+  .country-cell .flag { font-size: 18px; flex-shrink: 0; }
+  .country-cell .name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .points-cell {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 17px;
+    text-align: right;
+    color: var(--accent);
+    text-shadow: 0 0 10px var(--glow);
+    perspective: 200px;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .points-cell.flap-flip { animation: flap-flip 420ms ease; display: inline-block; }
+  }
+  @keyframes flap-flip {
+    0%   { transform: rotateX(0deg);   opacity: 1; }
+    45%  { transform: rotateX(85deg);  opacity: .35; }
+    55%  { transform: rotateX(-85deg); opacity: .35; }
+    100% { transform: rotateX(0deg);   opacity: 1; }
+  }
+  .board-empty, .board-error {
+    padding: 28px 16px;
+    text-align: center;
+    color: rgba(246,242,231,0.6);
+    font-size: 14px;
   }
 
-  /* Toast notifications (replaces blocking alert() popups) */
+  /* ---------- Bottom CTA bar ---------- */
+  .cta-bar {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 40;
+    background: var(--paper);
+    border-top: 1px solid var(--line);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+  .cta-inner { max-width: 560px; margin: 0 auto; position: relative; }
+  .cta-button {
+    width: 100%;
+    background: var(--accent);
+    color: var(--accent-contrast);
+    font-family: var(--font-display);
+    font-size: 21px;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    box-shadow: 0 6px 0 var(--accent-deep);
+    transition: transform .08s ease, box-shadow .08s ease;
+  }
+  .cta-button:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 var(--accent-deep);
+  }
+  .cta-button:disabled {
+    background: var(--line);
+    color: var(--ink-soft);
+    box-shadow: 0 6px 0 #C9C0A0;
+    cursor: not-allowed;
+  }
+  .float-pop {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--accent-deep);
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .float-pop { animation: float-up 700ms ease-out forwards; }
+  }
+  @keyframes float-up {
+    0% { transform: translate(-50%, 0); opacity: 1; }
+    100% { transform: translate(-50%, -34px); opacity: 0; }
+  }
+
+  /* ---------- Sheets (Settings / Shop) ---------- */
+  .sheet-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(27,31,34,0.45);
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease;
+  }
+  .sheet-backdrop.show { opacity: 1; pointer-events: auto; }
+
+  .sheet {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 60;
+    background: var(--paper);
+    border-radius: 22px 22px 0 0;
+    box-shadow: var(--shadow-2);
+    max-height: 82vh;
+    overflow-y: auto;
+    transform: translateY(105%);
+    transition: transform .28s cubic-bezier(.32,.72,0,1);
+    padding: 18px 20px calc(24px + env(safe-area-inset-bottom));
+  }
+  .sheet.open { transform: translateY(0); }
+  .sheet-grip {
+    width: 40px; height: 4px;
+    background: var(--line);
+    border-radius: 999px;
+    margin: 0 auto 14px;
+  }
+  .sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .sheet-header h2 {
+    font-family: var(--font-display);
+    font-size: 26px;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  /* Shop */
+  .upgrade-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--paper-dim);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .upgrade-icon {
+    width: 42px; height: 42px;
+    border-radius: 10px;
+    background: var(--ink);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .upgrade-info { flex: 1; min-width: 0; }
+  .upgrade-title { font-weight: 700; font-size: 15px; }
+  .upgrade-desc { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
+  .upgrade-buy {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    font-weight: 700;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 9px 12px;
+    border-radius: 10px;
+    white-space: nowrap;
+    transition: transform .1s ease;
+  }
+  .upgrade-buy:active { transform: scale(0.94); }
+  .shop-points-line {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-bottom: 14px;
+  }
+  .shop-points-line b { color: var(--ink); }
+
+  /* Settings */
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .settings-row:last-of-type { border-bottom: none; }
+  .settings-label { font-weight: 600; font-size: 14.5px; }
+  .settings-hint { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+
+  .toggle-switch {
+    width: 46px; height: 26px;
+    border-radius: 999px;
+    background: var(--line);
+    position: relative;
+    transition: background .15s ease;
+    flex-shrink: 0;
+  }
+  .toggle-switch::after {
+    content: "";
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: var(--shadow-1);
+    transition: transform .15s ease;
+  }
+  .toggle-switch.on { background: var(--accent); }
+  .toggle-switch.on::after { transform: translateX(20px); }
+
+  .track-link {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-decoration: underline;
+    color: var(--ink-soft);
+    margin-top: 6px;
+  }
+
+  .swatch-row { display: flex; gap: 12px; padding: 10px 0 4px; }
+  .swatch {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    position: relative;
+  }
+  .swatch.selected { border-color: var(--ink); }
+  .swatch.selected::after {
+    content: "✓";
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    font-size: 14px;
+    text-shadow: 0 1px 2px rgba(0,0,0,.4);
+  }
+  .swatch[data-t="amber"] { background: #FFB400; }
+  .swatch[data-t="sky"] { background: #2F6FED; }
+  .swatch[data-t="rose"] { background: #E85D75; }
+  .swatch[data-t="mint"] { background: #2FBF87; }
+
+  /* ---------- Toasts ---------- */
   #toastContainer {
     position: fixed;
-    bottom: 16px;
+    bottom: calc(var(--cta-h) + 14px + env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
-    z-index: 1300;
+    z-index: 80;
     display: flex;
     flex-direction: column;
     gap: 8px;
     align-items: center;
     pointer-events: none;
+    width: 100%;
+    padding: 0 20px;
   }
   .toast {
-    background: rgba(30,30,30,0.92);
-    color: #fff;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--font-body);
+    font-size: 13.5px;
     padding: 10px 16px;
-    border-radius: 8px;
-    font-size: 14px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+    border-radius: 10px;
+    box-shadow: var(--shadow-2);
     opacity: 0;
     transform: translateY(8px);
     transition: opacity .2s ease, transform .2s ease;
-    max-width: 280px;
+    max-width: 320px;
     text-align: center;
   }
   .toast.show { opacity: 1; transform: translateY(0); }
+
+  @media (min-width: 640px) {
+    h1.page-title { font-size: 46px; }
+    .app-shell { padding: 0 20px; }
+  }
 </style>
 </head>
 
 <body>
 
-<h1>🌍Country Leaderboard🌍</h1>
-<p id="country">Detecting your country...</p>
-<p id="statusNote"></p>
-<p>Upgrade Points: <span id="upgradePointsDisplay">0</span></p>
-
-<button id="addPoint" disabled>+1 Point</button>
-<button id="shopBtn">Shop 🛒</button>
-<!-- Settings button fixed in the corner -->
-<button id="settingsBtn">⚙️ Settings</button>
-
-<table id="leaderboard" aria-label="Leaderboard">
-  <thead>
-    <tr><th>Country</th><th>Points</th></tr>
-  </thead>
-  <tbody></tbody>
-</table>
-
-<div id="shop">
-  <h2>Shop</h2>
-  <p>Upgrade Points: <span id="upgradePointsDisplay2">0</span></p>
-  <button id="multiplierBtn" onclick="buyUpgrade('multiplier')">+1 Multiplier (Cost: 50)</button>
-  <button id="autoClickerBtn" onclick="buyUpgrade('autoclick')">Auto-Clicker (Cost: 200)</button>
-</div>
-
-<!-- SETTINGS MENU (fixed) -->
-<div id="settingsMenu" aria-hidden="true">
-  <h2>Settings</h2>
-
-  <p style="margin:6px 0 4px;"><b>Music:</b></p>
-  <button id="toggleMusic" class="off" aria-pressed="false">Music: OFF</button>
-
-  <p style="margin:12px 0 4px;"><b>Background:</b></p>
-  <div class="gradientOption" onclick="changeBG(1)" style="background: linear-gradient(135deg, #74ebd5, #9face6);">
-    Default
-  </div>
-  <div class="gradientOption" onclick="changeBG(2)" style="background: linear-gradient(135deg, #ff9a9e, #fecfef);">
-    Pink
-  </div>
-  <div class="gradientOption" onclick="changeBG(3)" style="background: linear-gradient(135deg, #89f7fe, #66a6ff);">
-    Ocean
-  </div>
-  <div class="gradientOption" onclick="changeBG(4)" style="background: linear-gradient(135deg, #f6d365, #fda085);">
-    Sunset
+<div class="topbar">
+  <div class="topbar-inner">
+    <span class="live-indicator"><span class="live-dot"></span>LIVE</span>
+    <button class="icon-btn" id="settingsBtn" aria-label="Open settings" aria-haspopup="dialog">⚙</button>
   </div>
 </div>
 
+<div class="app-shell">
+  <h1 class="page-title">Country Leaderboard</h1>
+  <p class="page-sub">Tap in for your country. Every point counts toward the board below.</p>
+
+  <div class="status-card">
+    <div class="status-you">
+      <span class="status-flag" id="statusFlag">🌐</span>
+      <span class="status-text">
+        <span class="status-label">Representing</span>
+        <span class="status-country" id="statusCountry">Locating you…</span>
+      </span>
+    </div>
+    <div class="status-right">
+      <span class="points-chip">Upgrade Pts: <b id="upgradePointsDisplay">0</b></span>
+      <button class="shop-btn" id="shopBtn">Shop</button>
+    </div>
+  </div>
+
+  <div class="board-wrap" role="table" aria-label="Country leaderboard">
+    <div class="board-row board-row--head" role="row">
+      <span role="columnheader">#</span>
+      <span role="columnheader">Country</span>
+      <span role="columnheader">Points</span>
+    </div>
+    <div class="board-body" id="boardBody" role="rowgroup"></div>
+  </div>
+</div>
+
+<div class="cta-bar">
+  <div class="cta-inner">
+    <button class="cta-button" id="ctaButton" disabled>Locating you…</button>
+  </div>
+</div>
+
+<!-- Shop sheet -->
+<div class="sheet" id="shopSheet" role="dialog" aria-modal="true" aria-label="Shop">
+  <div class="sheet-grip"></div>
+  <div class="sheet-header">
+    <h2>Shop</h2>
+    <button class="icon-btn" data-close-sheet aria-label="Close shop">✕</button>
+  </div>
+  <p class="shop-points-line">Upgrade points: <b id="upgradePointsDisplay2">0</b></p>
+
+  <div class="upgrade-card">
+    <div class="upgrade-icon">×</div>
+    <div class="upgrade-info">
+      <div class="upgrade-title" id="multiplierTitle">Multiplier boost</div>
+      <div class="upgrade-desc">Each tap scores more points.</div>
+    </div>
+    <button class="upgrade-buy" id="multiplierBtn">Cost 50</button>
+  </div>
+
+  <div class="upgrade-card">
+    <div class="upgrade-icon">⏱</div>
+    <div class="upgrade-info">
+      <div class="upgrade-title" id="autoClickerTitle">Autopilot</div>
+      <div class="upgrade-desc">Scores for your country automatically, once per second.</div>
+    </div>
+    <button class="upgrade-buy" id="autoClickerBtn">Cost 200</button>
+  </div>
+</div>
+
+<!-- Settings sheet -->
+<div class="sheet" id="settingsSheet" role="dialog" aria-modal="true" aria-label="Settings">
+  <div class="sheet-grip"></div>
+  <div class="sheet-header">
+    <h2>Settings</h2>
+    <button class="icon-btn" data-close-sheet aria-label="Close settings">✕</button>
+  </div>
+
+  <div class="settings-row">
+    <div>
+      <div class="settings-label">Music</div>
+      <a href="#" class="track-link" id="changeTrackLink">Set a custom track</a>
+    </div>
+    <button class="toggle-switch off" id="toggleMusic" role="switch" aria-checked="false" aria-label="Toggle music"></button>
+  </div>
+
+  <div class="settings-row" style="display:block;">
+    <div class="settings-label">Board color</div>
+    <div class="settings-hint">Changes the accent used on the board and button.</div>
+    <div class="swatch-row" id="swatchRow">
+      <button class="swatch" data-t="amber" aria-label="Amber theme"></button>
+      <button class="swatch" data-t="sky" aria-label="Sky theme"></button>
+      <button class="swatch" data-t="rose" aria-label="Rose theme"></button>
+      <button class="swatch" data-t="mint" aria-label="Mint theme"></button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
 <div id="toastContainer"></div>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
 <script>
-/* ---------- Toast helper (replaces blocking alert() popups) ---------- */
+/* ============================================================
+   Toast helper
+   ============================================================ */
 const toastContainer = document.getElementById("toastContainer");
 function showToast(message, duration = 2600) {
   const el = document.createElement("div");
@@ -240,11 +656,10 @@ function showToast(message, duration = 2600) {
   }, duration);
 }
 
-/* ---------- Firebase init ----------
-   Wrapped in try/catch: if the Firebase SDK fails to load (offline, ad
-   blocker, CDN outage, etc.) the rest of the page — settings, music,
-   background picker, and the local upgrade shop — must keep working.
-   `dbReady` gates every call that touches the database. */
+/* ============================================================
+   Firebase init — wrapped so a failed CDN load only disables the
+   leaderboard, not the whole page (settings, shop, music still work).
+   ============================================================ */
 const firebaseConfig = {
   apiKey: "AIzaSyC_FeZlvtmTKvToG1lHn3moLSRdTmE-uzI",
   authDomain: "countryleaderboard.firebaseapp.com",
@@ -265,23 +680,64 @@ try {
   dbReady = true;
 } catch (err) {
   console.error("Firebase unavailable — leaderboard features disabled:", err);
-  const lb = document.querySelector("#leaderboard tbody");
-  if (lb) lb.innerHTML = `<tr><td colspan="2">Leaderboard unavailable right now</td></tr>`;
 }
 
-/* ---------- Country detection ---------- */
-let userCountry = "";
-const countryEl = document.getElementById("country");
-const addPointBtn = document.getElementById("addPoint");
-const statusNote = document.getElementById("statusNote");
+/* ============================================================
+   Flag helper
+   ============================================================ */
+function flagEmoji(code) {
+  if (!code || code.length !== 2) return "🌐";
+  const upper = code.toUpperCase();
+  if (!/^[A-Z]{2}$/.test(upper)) return "🌐";
+  return String.fromCodePoint(...[...upper].map(c => 127397 + c.charCodeAt(0)));
+}
 
-function refreshAddPointAvailability() {
-  addPointBtn.disabled = !(userCountry && dbReady);
+/* ============================================================
+   Country detection + CTA / status state machine
+   ============================================================ */
+let userCountry = "";
+let userCountryCode = "";
+let detectFailed = false;
+let detecting = true;
+
+const statusFlagEl = document.getElementById("statusFlag");
+const statusCountryEl = document.getElementById("statusCountry");
+const ctaButton = document.getElementById("ctaButton");
+
+function refreshCtaAndStatus() {
+  if (detecting) {
+    ctaButton.disabled = true;
+    ctaButton.textContent = "Locating you…";
+    statusCountryEl.textContent = "Locating you…";
+    statusFlagEl.textContent = "🌐";
+    return;
+  }
+
+  if (detectFailed) {
+    ctaButton.disabled = false;
+    ctaButton.textContent = "Couldn't find you — tap to retry";
+    statusCountryEl.textContent = "Location unavailable";
+    statusFlagEl.textContent = "🌐";
+    return;
+  }
+
+  statusCountryEl.textContent = userCountry;
+  statusFlagEl.textContent = flagEmoji(userCountryCode);
+
+  if (!dbReady) {
+    ctaButton.disabled = true;
+    ctaButton.textContent = "Scoreboard offline";
+    return;
+  }
+
+  ctaButton.disabled = false;
+  ctaButton.textContent = `Score for ${userCountry}`;
 }
 
 function detectCountry() {
-  countryEl.textContent = "Detecting your country...";
-  statusNote.textContent = "";
+  detecting = true;
+  detectFailed = false;
+  refreshCtaAndStatus();
 
   fetch("https://ipwho.is/")
     .then(async res => {
@@ -294,34 +750,33 @@ function detectCountry() {
       }
 
       userCountry = data.country;
-      const userContinent = data.continent || "Unknown";
-
-      countryEl.textContent = "Your country: " + userCountry;
-      refreshAddPointAvailability();
+      userCountryCode = data.country_code || "";
+      detecting = false;
+      refreshCtaAndStatus();
 
       if (dbReady) {
-        db.ref("countryInfo/" + userCountry).set({ continent: userContinent })
-          .catch(err => console.error("Could not write country info:", err));
+        db.ref("countryInfo/" + userCountry).set({
+          continent: data.continent || "Unknown",
+          code: userCountryCode
+        }).catch(err => console.error("Could not write country info:", err));
       }
     })
     .catch(err => {
       console.error(err);
       userCountry = "";
-      countryEl.textContent = "Could not detect country";
-      statusNote.innerHTML = `<a href="#" id="retryDetect" style="color:#0645AD;">Tap to retry</a>`;
-      document.getElementById("retryDetect").addEventListener("click", (e) => {
-        e.preventDefault();
-        detectCountry();
-      });
-      refreshAddPointAvailability();
+      userCountryCode = "";
+      detecting = false;
+      detectFailed = true;
+      refreshCtaAndStatus();
     });
 }
 
 detectCountry();
 
-/* ---------- Upgrade local system ----------
-   Stored as one JSON blob instead of five separate keys — fewer localStorage
-   round-trips and no risk of the fields drifting out of sync with each other. */
+/* ============================================================
+   Upgrade / local progress system
+   Stored as one JSON blob; migrates any old per-field keys.
+   ============================================================ */
 const PROGRESS_KEY = "leaderboardProgress";
 const savedProgress = (() => {
   try {
@@ -329,8 +784,6 @@ const savedProgress = (() => {
     if (existing) return existing;
   } catch {}
 
-  // One-time migration from the old per-field keys, so returning players
-  // don't lose their saved progress.
   const legacy = {
     upgradePoints: parseInt(localStorage.getItem("upgradePoints")) || 0,
     clickMultiplier: parseInt(localStorage.getItem("clickMultiplier")) || 1,
@@ -358,8 +811,12 @@ function saveUpgrades() {
 function updateUpgradeDisplay() {
   document.getElementById("upgradePointsDisplay").textContent = upgradePoints;
   document.getElementById("upgradePointsDisplay2").textContent = upgradePoints;
-  document.getElementById("multiplierBtn").textContent = `+1 Multiplier (Cost: ${multiplierCost})`;
-  document.getElementById("autoClickerBtn").textContent = `Auto-Clicker (Cost: ${autoClickerCost})`;
+  document.getElementById("multiplierTitle").textContent = `Multiplier boost — x${clickMultiplier}`;
+  document.getElementById("multiplierBtn").textContent = `Cost ${multiplierCost}`;
+  document.getElementById("autoClickerTitle").textContent = autoClickers > 0
+    ? `Autopilot — ${autoClickers} active`
+    : "Autopilot";
+  document.getElementById("autoClickerBtn").textContent = `Cost ${autoClickerCost}`;
 }
 updateUpgradeDisplay();
 
@@ -368,20 +825,25 @@ function buyUpgrade(type) {
     upgradePoints -= multiplierCost;
     clickMultiplier++;
     multiplierCost = Math.floor(multiplierCost * 1.5);
-    showToast(`Multiplier upgraded! Now x${clickMultiplier}`);
+    showToast(`Multiplier upgraded — now x${clickMultiplier}`);
   } else if (type === "autoclick" && upgradePoints >= autoClickerCost) {
     upgradePoints -= autoClickerCost;
     autoClickers++;
     autoClickerCost = Math.floor(autoClickerCost * 1.5);
-    showToast(`Bought Auto-Clicker! (${autoClickers} total)`);
+    showToast(`Autopilot bought — ${autoClickers} active`);
   } else {
-    showToast("Not enough points!");
+    showToast("Not enough upgrade points yet");
   }
   saveUpgrades();
   updateUpgradeDisplay();
+  refreshCtaAndStatus();
 }
+document.getElementById("multiplierBtn").addEventListener("click", () => buyUpgrade("multiplier"));
+document.getElementById("autoClickerBtn").addEventListener("click", () => buyUpgrade("autoclick"));
 
-/* ---------- Auto-clickers ---------- */
+/* ============================================================
+   Auto-clickers
+   ============================================================ */
 setInterval(() => {
   if (dbReady && autoClickers > 0 && userCountry) {
     const ref = db.ref("countries/" + userCountry);
@@ -395,11 +857,30 @@ setInterval(() => {
   }
 }, 1000);
 
-/* ---------- Click handler ---------- */
-addPointBtn.addEventListener("click", () => {
+/* ============================================================
+   CTA click — scores a point, or retries detection if it failed
+   ============================================================ */
+const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function popFloatingScore() {
+  if (reduceMotion) return;
+  const el = document.createElement("span");
+  el.className = "float-pop";
+  el.textContent = `+${clickMultiplier}`;
+  ctaButton.parentElement.appendChild(el);
+  setTimeout(() => el.remove(), 750);
+}
+
+ctaButton.addEventListener("click", () => {
+  if (detectFailed) {
+    detectCountry();
+    return;
+  }
   if (!dbReady || !userCountry) return;
+
   const ref = db.ref("countries/" + userCountry);
   ref.transaction(current => (current || 0) + (1 * clickMultiplier));
+  popFloatingScore();
 
   if (Math.random() < 0.15) {
     upgradePoints += clickMultiplier;
@@ -408,44 +889,133 @@ addPointBtn.addEventListener("click", () => {
   }
 });
 
-/* ---------- Leaderboard render ---------- */
-const leaderboardBody = document.querySelector("#leaderboard tbody");
-if (dbReady) {
-  db.ref("countries").on("value", snapshot => {
-    leaderboardBody.innerHTML = "";
-    const data = snapshot.val() || {};
-    const sorted = Object.entries(data).sort((a, b) => b[1] - a[1]);
-    if (sorted.length === 0) {
-      leaderboardBody.innerHTML = `<tr><td colspan="2">No scores yet</td></tr>`;
-      return;
-    }
-    sorted.forEach(([country, points]) => {
-      const row = document.createElement("tr");
-      row.innerHTML = `<td>${country}</td><td>${points}</td>`;
-      leaderboardBody.appendChild(row);
-    });
-  }, err => {
-    console.error("Leaderboard read failed:", err);
-    leaderboardBody.innerHTML = `<tr><td colspan="2">Leaderboard unavailable right now</td></tr>`;
-  });
+/* ============================================================
+   Leaderboard render — split-flap board with flip animation
+   ============================================================ */
+const boardBody = document.getElementById("boardBody");
+let countriesData = {};
+let countryInfoData = {};
+let previousPoints = {};
+let countriesLoaded = false;
+let countryInfoLoaded = false;
+
+function rankBadge(index) {
+  if (index === 0) return { text: "🥇", medal: true };
+  if (index === 1) return { text: "🥈", medal: true };
+  if (index === 2) return { text: "🥉", medal: true };
+  return { text: String(index + 1).padStart(2, "0"), medal: false };
 }
 
-/* ---------- Shop toggle ---------- */
-document.getElementById("shopBtn").addEventListener("click", () => {
-  const shop = document.getElementById("shop");
-  shop.style.display = (shop.style.display === "none" || shop.style.display === "") ? "block" : "none";
+function renderLeaderboard() {
+  if (!dbReady) {
+    boardBody.innerHTML = `<div class="board-error" role="row">Scoreboard's offline right now — check back soon.</div>`;
+    return;
+  }
+  if (!countriesLoaded) return; // wait for first snapshot before rendering anything
+
+  const sorted = Object.entries(countriesData).sort((a, b) => b[1] - a[1]);
+
+  if (sorted.length === 0) {
+    boardBody.innerHTML = `<div class="board-empty" role="row">Board's empty — tap the button below to put your country on it.</div>`;
+    return;
+  }
+
+  boardBody.innerHTML = "";
+  sorted.forEach(([country, points], index) => {
+    const badge = rankBadge(index);
+    const code = countryInfoData[country] && countryInfoData[country].code;
+    const changed = previousPoints[country] !== undefined && previousPoints[country] !== points;
+    const isYou = userCountry && country === userCountry;
+
+    const row = document.createElement("div");
+    row.className = "board-row" + (isYou ? " you" : "");
+    row.setAttribute("role", "row");
+    row.innerHTML = `
+      <span class="rank-cell${badge.medal ? " medal" : ""}" role="cell">${badge.text}</span>
+      <span class="country-cell" role="cell">
+        <span class="flag">${flagEmoji(code)}</span>
+        <span class="name" title="${country}">${country}</span>
+      </span>
+      <span class="points-cell${changed ? " flap-flip" : ""}" role="cell">${points}</span>
+    `;
+    boardBody.appendChild(row);
+  });
+
+  previousPoints = Object.fromEntries(sorted);
+}
+
+if (dbReady) {
+  db.ref("countries").on("value", snapshot => {
+    countriesData = snapshot.val() || {};
+    countriesLoaded = true;
+    renderLeaderboard();
+  }, err => {
+    console.error("Leaderboard read failed:", err);
+    boardBody.innerHTML = `<div class="board-error" role="row">Scoreboard's offline right now — check back soon.</div>`;
+  });
+
+  db.ref("countryInfo").on("value", snapshot => {
+    countryInfoData = snapshot.val() || {};
+    countryInfoLoaded = true;
+    renderLeaderboard();
+  });
+} else {
+  renderLeaderboard();
+}
+
+/* ============================================================
+   Shop / Settings bottom sheets
+   ============================================================ */
+const sheetBackdrop = document.getElementById("sheetBackdrop");
+
+function openSheet(id) {
+  document.querySelectorAll(".sheet").forEach(s => s.classList.remove("open"));
+  document.getElementById(id).classList.add("open");
+  sheetBackdrop.classList.add("show");
+  document.body.classList.add("sheet-open");
+}
+function closeSheets() {
+  document.querySelectorAll(".sheet").forEach(s => s.classList.remove("open"));
+  sheetBackdrop.classList.remove("show");
+  document.body.classList.remove("sheet-open");
+}
+
+document.getElementById("shopBtn").addEventListener("click", () => openSheet("shopSheet"));
+document.getElementById("settingsBtn").addEventListener("click", () => openSheet("settingsSheet"));
+document.querySelectorAll("[data-close-sheet]").forEach(btn => btn.addEventListener("click", closeSheets));
+sheetBackdrop.addEventListener("click", closeSheets);
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheets(); });
+
+/* ============================================================
+   Board color (accent theme)
+   ============================================================ */
+const THEMES = ["amber", "sky", "rose", "mint"];
+let accentTheme = localStorage.getItem("accentTheme") || "amber";
+if (!THEMES.includes(accentTheme)) accentTheme = "amber";
+
+function applyTheme(theme) {
+  accentTheme = theme;
+  if (theme === "amber") {
+    delete document.body.dataset.theme;
+  } else {
+    document.body.dataset.theme = theme;
+  }
+  localStorage.setItem("accentTheme", theme);
+  document.querySelectorAll(".swatch").forEach(sw => {
+    sw.classList.toggle("selected", sw.dataset.t === theme);
+  });
+}
+applyTheme(accentTheme);
+
+document.querySelectorAll(".swatch").forEach(sw => {
+  sw.addEventListener("click", () => applyTheme(sw.dataset.t));
 });
 
-/* ---------- SETTINGS & MUSIC ---------- */
-
-/*
- * Use your GitHub raw file URL here:
- * Format: https://raw.githubusercontent.com/<user>/<repo>/<branch>/<path>
- * I set a sensible default for your repo (assumes music.mp3 at root on main)
- */
+/* ============================================================
+   Music
+   ============================================================ */
 const defaultMusicURL = "https://raw.githubusercontent.com/savvas767/Detector/main/good-night-lofi-cozy-chill-music-160166.mp3";
 
-/* create audio element */
 let music = new Audio();
 music.src = localStorage.getItem("musicURL") || defaultMusicURL;
 music.loop = true;
@@ -458,78 +1028,45 @@ music.addEventListener("error", () => {
 });
 music.addEventListener("loadeddata", () => { musicFileBroken = false; });
 
-/* state */
 let musicEnabled = localStorage.getItem("musicEnabled");
 if (musicEnabled === null) {
-  musicEnabled = true; // default ON
+  musicEnabled = true;
   localStorage.setItem("musicEnabled", true);
 } else {
   musicEnabled = (musicEnabled === "true");
 }
-let currentBG = localStorage.getItem("backgroundID") || "1";
 
-/* UI elems */
 const toggleMusicBtn = document.getElementById("toggleMusic");
-const settingsMenu = document.getElementById("settingsMenu");
-const settingsBtn = document.getElementById("settingsBtn");
 
-/* backgrounds */
-const backgrounds = {
-  1: "linear-gradient(135deg, #74ebd5, #9face6)",
-  2: "linear-gradient(135deg, #ff9a9e, #fecfef)",
-  3: "linear-gradient(135deg, #89f7fe, #66a6ff)",
-  4: "linear-gradient(135deg, #f6d365, #fda085)"
-};
-
-function applyBackground(id){
-  const pick = backgrounds[id] || backgrounds[1];
-  document.body.style.background = pick;
-  localStorage.setItem("backgroundID", id);
-  currentBG = id;
+function setMusicButtonUI() {
+  toggleMusicBtn.classList.toggle("on", musicEnabled);
+  toggleMusicBtn.classList.toggle("off", !musicEnabled);
+  toggleMusicBtn.setAttribute("aria-checked", String(musicEnabled));
 }
-
-/* initialize UI state (do not force play - may be blocked) */
-applyBackground(currentBG);
 setMusicButtonUI();
 
-/* try to auto-play only if musicEnabled, but catch errors and keep UI in sync */
 if (musicEnabled) {
-  music.play().catch(err => {
-    // Autoplay blocked — mark music as disabled until user clicks toggle
+  music.play().catch(() => {
     musicEnabled = false;
     localStorage.setItem("musicEnabled", "false");
     setMusicButtonUI();
   });
 }
 
-/* helper to update toggle button look */
-function setMusicButtonUI(){
-  toggleMusicBtn.textContent = `Music: ${musicEnabled ? "ON" : "OFF"}`;
-  toggleMusicBtn.classList.toggle("on", musicEnabled);
-  toggleMusicBtn.classList.toggle("off", !musicEnabled);
-  toggleMusicBtn.setAttribute("aria-pressed", String(musicEnabled));
-}
-
-/* change background from menu */
-function changeBG(id){
-  applyBackground(String(id));
-}
-
-/* toggle music on user click */
 toggleMusicBtn.addEventListener("click", async () => {
   musicEnabled = !musicEnabled;
   localStorage.setItem("musicEnabled", musicEnabled ? "true" : "false");
 
   if (musicEnabled) {
     try {
-      await music.play(); // a click is a user gesture, so this should succeed
+      await music.play();
     } catch (e) {
       musicEnabled = false;
       localStorage.setItem("musicEnabled", "false");
       if (musicFileBroken) {
-        showToast("Music file couldn't be loaded. Double-click this button to set a working URL.", 4000);
+        showToast("Music file couldn't be loaded. Tap \"Set a custom track\" below.", 4000);
       } else {
-        showToast("Playback was blocked. Tap the button again to start music.");
+        showToast("Playback was blocked. Tap the switch again to start music.");
       }
     }
   } else {
@@ -539,41 +1076,17 @@ toggleMusicBtn.addEventListener("click", async () => {
   setMusicButtonUI();
 });
 
-/* Toggle settings menu visibility (button in corner) */
-settingsBtn.addEventListener("click", () => {
-  const isHidden = (settingsMenu.style.display === "none" || settingsMenu.style.display === "");
-  settingsMenu.style.display = isHidden ? "block" : "none";
-  settingsMenu.setAttribute("aria-hidden", !isHidden ? "true" : "false");
-});
-
-/* Close settings if user clicks outside it */
-document.addEventListener("click", (e) => {
-  const target = e.target;
-  if (!settingsMenu.contains(target) && !settingsBtn.contains(target)) {
-    // only hide if it was open
-    if (settingsMenu.style.display === "block") {
-      settingsMenu.style.display = "none";
-      settingsMenu.setAttribute("aria-hidden", "true");
-    }
-  }
-});
-
-/* Double-click the music button to set a custom track URL */
-toggleMusicBtn.addEventListener("dblclick", () => {
+document.getElementById("changeTrackLink").addEventListener("click", (e) => {
+  e.preventDefault();
   const newURL = prompt("Enter the direct URL to your music file (mp3):", localStorage.getItem("musicURL") || defaultMusicURL);
   if (newURL && newURL.trim()) {
     localStorage.setItem("musicURL", newURL.trim());
     music.src = newURL.trim();
     if (musicEnabled) {
-      music.play().catch(() => {
-        showToast("Couldn't play the new track — tap the Music button to try again.");
-      });
+      music.play().catch(() => showToast("Couldn't play the new track — tap the switch to try again."));
     }
   }
 });
-
-/* Helpful: show a small hint in console about the correct raw URL format */
-console.info("If your GitHub-hosted music doesn't play, make sure the raw URL looks like:\nhttps://raw.githubusercontent.com/<user>/<repo>/<branch>/<path>\nExample used:", defaultMusicURL);
 </script>
 </body>
 </html>
