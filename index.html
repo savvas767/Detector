@@ -129,6 +129,46 @@
     border-radius: 10px;
     background: #fafafa;
   }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  #statusNote {
+    font-size: 13px;
+    color: #444;
+    min-height: 18px;
+  }
+
+  /* Toast notifications (replaces blocking alert() popups) */
+  #toastContainer {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1300;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    pointer-events: none;
+  }
+  .toast {
+    background: rgba(30,30,30,0.92);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity .2s ease, transform .2s ease;
+    max-width: 280px;
+    text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
 </style>
 </head>
 
@@ -136,9 +176,10 @@
 
 <h1>🌍Country Leaderboard🌍</h1>
 <p id="country">Detecting your country...</p>
+<p id="statusNote"></p>
 <p>Upgrade Points: <span id="upgradePointsDisplay">0</span></p>
 
-<button id="addPoint">+1 Point</button>
+<button id="addPoint" disabled>+1 Point</button>
 <button id="shopBtn">Shop 🛒</button>
 <!-- Settings button fixed in the corner -->
 <button id="settingsBtn">⚙️ Settings</button>
@@ -179,11 +220,31 @@
   </div>
 </div>
 
+<div id="toastContainer"></div>
+
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
 <script>
-/* ---------- Firebase init (unchanged) ---------- */
+/* ---------- Toast helper (replaces blocking alert() popups) ---------- */
+const toastContainer = document.getElementById("toastContainer");
+function showToast(message, duration = 2600) {
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.textContent = message;
+  toastContainer.appendChild(el);
+  requestAnimationFrame(() => el.classList.add("show"));
+  setTimeout(() => {
+    el.classList.remove("show");
+    setTimeout(() => el.remove(), 250);
+  }, duration);
+}
+
+/* ---------- Firebase init ----------
+   Wrapped in try/catch: if the Firebase SDK fails to load (offline, ad
+   blocker, CDN outage, etc.) the rest of the page — settings, music,
+   background picker, and the local upgrade shop — must keep working.
+   `dbReady` gates every call that touches the database. */
 const firebaseConfig = {
   apiKey: "AIzaSyC_FeZlvtmTKvToG1lHn3moLSRdTmE-uzI",
   authDomain: "countryleaderboard.firebaseapp.com",
@@ -193,56 +254,105 @@ const firebaseConfig = {
   messagingSenderId: "288815672414",
   appId: "1:288815672414:web:f6091a52d238c7080318cf"
 };
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
 
-/* ---------- Country detection (small fix: use proper continent field) ---------- */
+let db = null;
+let dbReady = false;
+
+try {
+  if (typeof firebase === "undefined") throw new Error("Firebase SDK did not load");
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+  dbReady = true;
+} catch (err) {
+  console.error("Firebase unavailable — leaderboard features disabled:", err);
+  const lb = document.querySelector("#leaderboard tbody");
+  if (lb) lb.innerHTML = `<tr><td colspan="2">Leaderboard unavailable right now</td></tr>`;
+}
+
+/* ---------- Country detection ---------- */
 let userCountry = "";
+const countryEl = document.getElementById("country");
+const addPointBtn = document.getElementById("addPoint");
+const statusNote = document.getElementById("statusNote");
 
-fetch("https://ipwho.is/")
-  .then(async res => {
-    if (!res.ok) {
-      throw new Error("Network response failed");
-    }
+function refreshAddPointAvailability() {
+  addPointBtn.disabled = !(userCountry && dbReady);
+}
 
-    return await res.json();
-  })
-  .then(data => {
-    console.log("IPWHO response:", data);
+function detectCountry() {
+  countryEl.textContent = "Detecting your country...";
+  statusNote.textContent = "";
 
-    userCountry = data.country || "Unknown";
-    const userContinent = data.continent || "Unknown";
+  fetch("https://ipwho.is/")
+    .then(async res => {
+      if (!res.ok) throw new Error("Network response failed");
+      return await res.json();
+    })
+    .then(data => {
+      if (!data || data.success === false || !data.country) {
+        throw new Error("Could not resolve country from response");
+      }
 
-    document.getElementById("country").textContent =
-      "Your country: " + userCountry;
+      userCountry = data.country;
+      const userContinent = data.continent || "Unknown";
 
-    if (userCountry !== "Unknown") {
-      db.ref("countryInfo/" + userCountry).set({
-        continent: userContinent
+      countryEl.textContent = "Your country: " + userCountry;
+      refreshAddPointAvailability();
+
+      if (dbReady) {
+        db.ref("countryInfo/" + userCountry).set({ continent: userContinent })
+          .catch(err => console.error("Could not write country info:", err));
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      userCountry = "";
+      countryEl.textContent = "Could not detect country";
+      statusNote.innerHTML = `<a href="#" id="retryDetect" style="color:#0645AD;">Tap to retry</a>`;
+      document.getElementById("retryDetect").addEventListener("click", (e) => {
+        e.preventDefault();
+        detectCountry();
       });
-    }
-  })
-  .catch(err => {
-    console.error(err);
+      refreshAddPointAvailability();
+    });
+}
 
-    document.getElementById("country").textContent =
-      "Could not detect country";
-  });
-  
-/* ---------- Upgrade local system (unchanged) ---------- */
-let upgradePoints = parseInt(localStorage.getItem("upgradePoints")) || 0;
-let clickMultiplier = parseInt(localStorage.getItem("clickMultiplier")) || 1;
-let autoClickers = parseInt(localStorage.getItem("autoClickers")) || 0;
+detectCountry();
 
-let multiplierCost = parseInt(localStorage.getItem("multiplierCost")) || 50;
-let autoClickerCost = parseInt(localStorage.getItem("autoClickerCost")) || 200;
+/* ---------- Upgrade local system ----------
+   Stored as one JSON blob instead of five separate keys — fewer localStorage
+   round-trips and no risk of the fields drifting out of sync with each other. */
+const PROGRESS_KEY = "leaderboardProgress";
+const savedProgress = (() => {
+  try {
+    const existing = JSON.parse(localStorage.getItem(PROGRESS_KEY));
+    if (existing) return existing;
+  } catch {}
+
+  // One-time migration from the old per-field keys, so returning players
+  // don't lose their saved progress.
+  const legacy = {
+    upgradePoints: parseInt(localStorage.getItem("upgradePoints")) || 0,
+    clickMultiplier: parseInt(localStorage.getItem("clickMultiplier")) || 1,
+    autoClickers: parseInt(localStorage.getItem("autoClickers")) || 0,
+    multiplierCost: parseInt(localStorage.getItem("multiplierCost")) || 50,
+    autoClickerCost: parseInt(localStorage.getItem("autoClickerCost")) || 200
+  };
+  ["upgradePoints", "clickMultiplier", "autoClickers", "multiplierCost", "autoClickerCost"]
+    .forEach(k => localStorage.removeItem(k));
+  return legacy;
+})();
+
+let upgradePoints = savedProgress.upgradePoints || 0;
+let clickMultiplier = savedProgress.clickMultiplier || 1;
+let autoClickers = savedProgress.autoClickers || 0;
+let multiplierCost = savedProgress.multiplierCost || 50;
+let autoClickerCost = savedProgress.autoClickerCost || 200;
 
 function saveUpgrades() {
-  localStorage.setItem("upgradePoints", upgradePoints);
-  localStorage.setItem("clickMultiplier", clickMultiplier);
-  localStorage.setItem("autoClickers", autoClickers);
-  localStorage.setItem("multiplierCost", multiplierCost);
-  localStorage.setItem("autoClickerCost", autoClickerCost);
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify({
+    upgradePoints, clickMultiplier, autoClickers, multiplierCost, autoClickerCost
+  }));
 }
 
 function updateUpgradeDisplay() {
@@ -258,14 +368,14 @@ function buyUpgrade(type) {
     upgradePoints -= multiplierCost;
     clickMultiplier++;
     multiplierCost = Math.floor(multiplierCost * 1.5);
-    alert(`Multiplier upgraded! Now x${clickMultiplier}`);
+    showToast(`Multiplier upgraded! Now x${clickMultiplier}`);
   } else if (type === "autoclick" && upgradePoints >= autoClickerCost) {
     upgradePoints -= autoClickerCost;
     autoClickers++;
     autoClickerCost = Math.floor(autoClickerCost * 1.5);
-    alert(`Bought Auto-Clicker! (${autoClickers} total)`);
+    showToast(`Bought Auto-Clicker! (${autoClickers} total)`);
   } else {
-    alert("Not enough points!");
+    showToast("Not enough points!");
   }
   saveUpgrades();
   updateUpgradeDisplay();
@@ -273,7 +383,7 @@ function buyUpgrade(type) {
 
 /* ---------- Auto-clickers ---------- */
 setInterval(() => {
-  if (autoClickers > 0 && userCountry) {
+  if (dbReady && autoClickers > 0 && userCountry) {
     const ref = db.ref("countries/" + userCountry);
     ref.transaction(current => (current || 0) + autoClickers * clickMultiplier);
 
@@ -286,8 +396,8 @@ setInterval(() => {
 }, 1000);
 
 /* ---------- Click handler ---------- */
-document.getElementById("addPoint").addEventListener("click", () => {
-  if(!userCountry) return;
+addPointBtn.addEventListener("click", () => {
+  if (!dbReady || !userCountry) return;
   const ref = db.ref("countries/" + userCountry);
   ref.transaction(current => (current || 0) + (1 * clickMultiplier));
 
@@ -300,16 +410,25 @@ document.getElementById("addPoint").addEventListener("click", () => {
 
 /* ---------- Leaderboard render ---------- */
 const leaderboardBody = document.querySelector("#leaderboard tbody");
-db.ref("countries").on("value", snapshot => {
-  leaderboardBody.innerHTML = "";
-  const data = snapshot.val() || {};
-  const sorted = Object.entries(data).sort((a,b)=>b[1]-a[1]);
-  sorted.forEach(([country, points]) => {
-    const row = document.createElement("tr");
-    row.innerHTML = `<td>${country}</td><td>${points}</td>`;
-    leaderboardBody.appendChild(row);
+if (dbReady) {
+  db.ref("countries").on("value", snapshot => {
+    leaderboardBody.innerHTML = "";
+    const data = snapshot.val() || {};
+    const sorted = Object.entries(data).sort((a, b) => b[1] - a[1]);
+    if (sorted.length === 0) {
+      leaderboardBody.innerHTML = `<tr><td colspan="2">No scores yet</td></tr>`;
+      return;
+    }
+    sorted.forEach(([country, points]) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `<td>${country}</td><td>${points}</td>`;
+      leaderboardBody.appendChild(row);
+    });
+  }, err => {
+    console.error("Leaderboard read failed:", err);
+    leaderboardBody.innerHTML = `<tr><td colspan="2">Leaderboard unavailable right now</td></tr>`;
   });
-});
+}
 
 /* ---------- Shop toggle ---------- */
 document.getElementById("shopBtn").addEventListener("click", () => {
@@ -331,6 +450,13 @@ let music = new Audio();
 music.src = localStorage.getItem("musicURL") || defaultMusicURL;
 music.loop = true;
 music.preload = "auto";
+
+let musicFileBroken = false;
+music.addEventListener("error", () => {
+  musicFileBroken = true;
+  console.error("Music file failed to load:", music.src);
+});
+music.addEventListener("loadeddata", () => { musicFileBroken = false; });
 
 /* state */
 let musicEnabled = localStorage.getItem("musicEnabled");
@@ -391,20 +517,20 @@ function changeBG(id){
 
 /* toggle music on user click */
 toggleMusicBtn.addEventListener("click", async () => {
-  // If URL changed by user previously, use it; else default
-  music.src = localStorage.getItem("musicURL") || defaultMusicURL;
-
   musicEnabled = !musicEnabled;
   localStorage.setItem("musicEnabled", musicEnabled ? "true" : "false");
 
   if (musicEnabled) {
     try {
-      await music.play(); // may require user gesture — click is a gesture so should succeed
-    } catch(e) {
-      // failed to play — probably blocked. Turn state back off and warn user.
+      await music.play(); // a click is a user gesture, so this should succeed
+    } catch (e) {
       musicEnabled = false;
       localStorage.setItem("musicEnabled", "false");
-      alert("Browser blocked autoplay. Try clicking anywhere on the page first, then toggle music again.");
+      if (musicFileBroken) {
+        showToast("Music file couldn't be loaded. Double-click this button to set a working URL.", 4000);
+      } else {
+        showToast("Playback was blocked. Tap the button again to start music.");
+      }
     }
   } else {
     music.pause();
@@ -432,21 +558,16 @@ document.addEventListener("click", (e) => {
   }
 });
 
-/* OPTIONAL: allow user to change music URL by prompt (not required but handy)
-   Pressing Shift+Click on the Music button will prompt for a new music URL and save it.
-*/
-toggleMusicBtn.addEventListener("auxclick", (e) => {
-  // ignore auxiliary clicks (middle/right) — only use shift+click on left
-});
+/* Double-click the music button to set a custom track URL */
 toggleMusicBtn.addEventListener("dblclick", () => {
-  // double-click to edit music URL quickly
   const newURL = prompt("Enter the direct URL to your music file (mp3):", localStorage.getItem("musicURL") || defaultMusicURL);
-  if (newURL) {
+  if (newURL && newURL.trim()) {
     localStorage.setItem("musicURL", newURL.trim());
     music.src = newURL.trim();
-    // if music is enabled, attempt to play new track
     if (musicEnabled) {
-      music.play().catch(()=>{ alert("Couldn't autoplay the new track — click the Music button to start it."); });
+      music.play().catch(() => {
+        showToast("Couldn't play the new track — tap the Music button to try again.");
+      });
     }
   }
 });
@@ -456,4 +577,3 @@ console.info("If your GitHub-hosted music doesn't play, make sure the raw URL lo
 </script>
 </body>
 </html>
-
